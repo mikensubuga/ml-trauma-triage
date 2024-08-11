@@ -1,0 +1,255 @@
+---
+title: "descriptive_3"
+author: "Mike Nsubuga"
+date: "2024-08-02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r}
+library(readxl)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(ggsci)
+library(knitr)
+library(kableExtra)
+```
+
+```{r}
+data <- read_excel("data.xlsx")
+```
+
+```{r}
+# Convert 'sex' to categorical
+data$sex <- factor(data$sex, levels = c(1, 2), labels = c('Male', 'Female'))
+data$sex[is.na(data$sex)] <- 'Unknown'
+data$sex <- factor(data$sex)
+
+# Create 'age_group' from 'age'
+bins <- seq(0, 110, by = 10)
+labels <- paste(seq(0, 100, by = 10), seq(9, 109, by = 10), sep = '-')
+data$age_group <- cut(data$age, breaks = bins, labels = labels, right = FALSE, include.lowest = TRUE)
+data$age_group[is.na(data$age_group)] <- 'Unknown'
+
+# Convert 'initialdec' to categorical with appropriate labels
+data$initialdec <- factor(data$initialdec, levels = c(1, 2, 3, 4),
+                          labels = c('Treat and send home', 'Take to theatre', 'N/A (died)', 'Admit to hospital ward'))
+data$initialdec[is.na(data$initialdec)] <- 'Unknown'
+```
+
+```{r}
+# Summary statistics
+summary(data)
+
+# Count of missing values for key variables
+missing_values <- data %>%
+  summarise(across(everything(), ~ sum(is.na(.))))
+missing_values
+```
+```{r}
+# Filter out rows with NAs for age, sex, initial decision, and injury mechanism
+data_filtered_all <- data %>% 
+  filter(!is.na(age) & sex != 'Unknown' & initialdec != 'Unknown' & mechofinj_str != 'NA')
+
+# Verify the filtering
+summary(data_filtered_all)
+```
+```{r}
+ggplot(data_filtered_all, aes(x = age)) +
+  geom_histogram(fill = 'steelblue', color = 'black', bins = 30) +
+  labs(title = 'Age Distribution', x = 'Age', y = 'Count') +
+  theme_minimal()
+```
+
+```{r}
+#data_filtered_sex <- data %>% filter(sex != 'NA')
+
+ggplot(data_filtered_all, aes(x = sex)) +
+  geom_bar(fill = 'tomato', color = 'black') +
+  labs(title = 'Sex Distribution', x = 'Sex', y = 'Count') +
+  theme_minimal()
+```
+```{r}
+# Filter out the 'Unknown' age group before plotting
+#data_filtered <- data %>% filter(age_group != 'Unknown')
+
+ggplot(data_filtered_all, aes(x = age_group, fill = mechofinj_str)) +
+  geom_bar(position = "fill") +
+  scale_fill_brewer(palette = "Paired") +
+  labs(title = 'Injury Mechanism by Age Group', x = 'Age Group', y = 'Proportion', fill = 'Mechanism of Injury') +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+```{r}
+ggplot(data_filtered_all, aes(x = age_group, fill = mechofinj_str)) +
+  geom_bar(position = "fill") +
+  scale_fill_brewer(palette = "Paired") +
+  labs(title = 'Injury Mechanism by Age Group', x = 'Age Group', y = 'Proportion', fill = 'Mechanism of Injury') +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+#data_filtered_inj <- data %>% filter(mechofinj != 'NA')
+
+ggplot(data_filtered_all, aes(x = mechofinj_str, fill = initialdec)) +
+  geom_bar(position = 'dodge') +
+  facet_wrap(~sex) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(title = 'Mechanism of Injury by Sex and Initial Decision',
+       x = 'Mechanism of Injury', y = 'Count', fill = 'Initial Decision') +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+
+```{r}
+
+
+# Create a summary table for sex
+sex_summary_table <- data %>%
+  group_by(sex) %>%
+  summarise(Count = n()) %>%
+  mutate(Percentage = Count / sum(Count) * 100)
+
+# Print the summary table for sex
+sex_summary_table %>%
+  kable(format = "html", col.names = c("Sex", "Count", "Percentage (%)")) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+
+# Create a summary table for age group
+age_group_summary_table <- data %>%
+  group_by(age_group) %>%
+  summarise(Count = n()) %>%
+  mutate(Percentage = Count / sum(Count) * 100)
+
+# Print the summary table for age group
+age_group_summary_table %>%
+  kable(format = "html", col.names = c("Age Group", "Count", "Percentage (%)")) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+```{r}
+# Create a summary table for sex
+sex_summary_table <- data_filtered_all %>%
+  group_by(sex) %>%
+  summarise(Count = n()) %>%
+  mutate(Percentage = Count / sum(Count) * 100)
+
+# Print the summary table for sex
+sex_summary_table %>%
+  kable(format = "html", col.names = c("Sex", "Count", "Percentage (%)")) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+
+# Create a summary table for age group
+age_group_summary_table <- data_filtered_all %>%
+  group_by(age_group) %>%
+  summarise(Count = n()) %>%
+  mutate(Percentage = Count / sum(Count) * 100)
+
+# Print the summary table for age group
+age_group_summary_table %>%
+  kable(format = "html", col.names = c("Age Group", "Count", "Percentage (%)")) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+```{r}
+
+
+# Filter out NAs for age, sex, initial decision, and injury mechanism
+#data_filtered_all <- data %>%
+  #filter(!is.na(age), !is.na(sex), !is.na(initialdec), !is.na(mechofinj_str))
+
+# Calculate the distribution of injury mechanisms by age group
+injury_by_age <- data%>%
+  group_by(age_group, mechofinj_str) %>%
+  summarise(count = n()) %>%
+  mutate(proportion = count / sum(count) * 100)
+
+# Calculate the distribution of injury mechanisms by sex
+injury_by_sex <- data %>%
+  group_by(sex, mechofinj_str) %>%
+  summarise(count = n()) %>%
+  mutate(proportion = count / sum(count) * 100)
+
+# Calculate the distribution of initial decisions by sex and mechanism of injury
+decision_by_sex_injury <- data %>%
+  group_by(sex, mechofinj_str, initialdec) %>%
+  summarise(count = n()) %>%
+  mutate(proportion = count / sum(count) * 100)
+
+# Display the results
+print(injury_by_age)
+print(injury_by_sex)
+print(decision_by_sex_injury)
+```
+
+
+
+
+```{r}
+all_initial_dec_summary_table <- data %>%
+  group_by(initialdec) %>%
+  summarise(Count = n()) %>%
+  mutate(Percentage = Count / sum(Count) * 100)
+
+# Print the summary table for sex
+all_initial_dec_summary_table %>%
+  kable(format = "html", col.names = c("Decision", "Count", "Percentage (%)")) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+
+
+```{r}
+mechinj_summary_table <- data %>%
+  group_by(mechofinj) %>%
+  summarise(Count = n()) %>%
+  mutate(Percentage = Count / sum(Count) * 100)
+
+# Print the summary table for sex
+mechinj_summary_table %>%
+  kable(format = "html", col.names = c("Decision", "Count", "Percentage (%)")) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+
+```
+
+```{r}
+mechinjstr_summary_table <- data %>%
+  group_by(mechofinj_str) %>%
+  summarise(Count = n()) %>%
+  mutate(Percentage = Count / sum(Count) * 100)
+
+# Print the summary table for sex
+mechinjstr_summary_table %>%
+  kable(format = "html", col.names = c("Decision", "Count", "Percentage (%)")) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+
+```
+
+```{r}
+# Assuming your data frame is named 'data'
+# Categorize 'hours_to_hospital' into three categories
+
+data$hours_to_hospital_category <- cut(data$hours_to_hospital,
+                                       breaks = c(-Inf, 1, 6, Inf),
+                                       labels = c("Less than 1 hour", "1 to 6 hours", "Over 6 hours"))
+
+# Create a summary table for the categorized 'hours_to_hospital' variable
+hours_summary_table <- data %>%
+  group_by(hours_to_hospital_category) %>%
+  summarise(Count = n()) %>%
+  mutate(Percentage = Count / sum(Count) * 100)
+
+# Print the summary table
+hours_summary_table %>%
+  kable(format = "html", col.names = c("Time Category", "Count", "Percentage (%)")) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
